@@ -1,0 +1,381 @@
+{
+  "students": [
+    {
+      "userId": "stu_a50105224001",
+      "preferredLanguage": "en",
+      "isAuthenticated": true,
+      "name": "Aarav Verma",
+      "email": "aarav.verma@s.amity.edu",
+      "enrollmentNo": "A50105224001",
+      "program": "B.Tech CSE (Sem 5 - BCS 522)",
+      "semester": 5,
+      "role": "student",
+      "passwordHash": "$2a$10$ftGiPecXBI9lLAVrGMFuB.7Xw/LMJ6ESR4.2NPxb8xUWBpY8TrYFy"
+    },
+    {
+      "userId": "stu_a50105224002",
+      "preferredLanguage": "hi",
+      "isAuthenticated": true,
+      "name": "Priya Meena",
+      "email": "priya.meena@s.amity.edu",
+      "enrollmentNo": "A50105224002",
+      "program": "B.Tech CSE (Sem 5 - BCS 522)",
+      "semester": 5,
+      "role": "student",
+      "passwordHash": "$2a$10$ftGiPecXBI9lLAVrGMFuB.7Xw/LMJ6ESR4.2NPxb8xUWBpY8TrYFy"
+    },
+    {
+      "userId": "anon_mwmme7ox7sj",
+      "preferredLanguage": "en",
+      "isAuthenticated": false,
+      "name": "Anonymous Visitor",
+      "email": "",
+      "enrollmentNo": "",
+      "program": "B.Tech CSE",
+      "semester": 5,
+      "role": "anonymous",
+      "passwordHash": ""
+    },
+    {
+      "userId": "anon_mwmmi5bnjd4",
+      "preferredLanguage": "en",
+      "isAuthenticated": false,
+      "name": "Anonymous Visitor",
+      "email": "",
+      "enrollmentNo": "",
+      "program": "B.Tech CSE",
+      "semester": 5,
+      "role": "anonymous",
+      "passwordHash": ""
+    }
+  ],
+  "widgets": [
+    {
+      "widgetId": "w_stu_a50105224001",
+      "userId": "stu_a50105224001",
+      "isVisible": true
+    },
+    {
+      "widgetId": "w_stu_a50105224002",
+      "userId": "stu_a50105224002",
+      "isVisible": true
+    },
+    {
+      "widgetId": "w_anon_mwmme7ox7sj",
+      "userId": "anon_mwmme7ox7sj",
+      "isVisible": true
+    },
+    {
+      "widgetId": "w_anon_mwmmi5bnjd4",
+      "userId": "anon_mwmmi5bnjd4",
+      "isVisible": true
+    }
+  ],
+  "userQueries": [],
+  "processors": [],
+  "responses": [],
+  "sessionHistory": [],
+  "sessionLogs": [
+    {
+      "logId": "lg_seed_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "sessionId": "sess_demo_aur_01",
+      "userId": "stu_a50105224001",
+      "queryText": "When do Odd Semester End-Term Examinations begin at Amity University Rajasthan?",
+      "responseText": "Based on official Amity University Rajasthan records: Odd Semester End-Term Theory Examinations for B.Tech CSE begin on December 4, 2026, following Practical & Lab Viva-Voce assessments (including BCS 522 Software Engineering Lab) from November 23 to November 30, 2026.",
+      "language": "en",
+      "timestamp": "2026-11-18T19:58:34.155Z"
+    },
+    {
+      "logId": "lg_seed_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "sessionId": "sess_demo_aur_02",
+      "userId": "stu_a50105224002",
+      "queryText": "à¤¬à¥€.à¤Ÿà¥‡à¤• à¤¸à¥€à¤à¤¸à¤ˆ à¤•à¥€ à¤«à¥€à¤¸ à¤•à¤¿à¤¤à¤¨à¥€ à¤¹à¥ˆ?",
+      "responseText": "[à¤¹à¤¿à¤¨à¥à¤¦à¥€ à¤…à¤¨à¥à¤µà¤¾à¤¦] à¤à¤®à¤¿à¤Ÿà¥€ à¤µà¤¿à¤¶à¥à¤µà¤µà¤¿à¤¦à¥à¤¯à¤¾à¤²à¤¯ à¤°à¤¾à¤œà¤¸à¥à¤¥à¤¾à¤¨ à¤•à¥‡ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤°à¤¿à¤•à¥‰à¤°à¥à¤¡ à¤•à¥‡ à¤…à¤¨à¥à¤¸à¤¾à¤°: The non-sponsored academic tuition fee for B.Tech CSE at Amity University Rajasthan (Jaipur) is INR 1,86,000 per semester (INR 3,72,000 per academic year).",
+      "language": "hi",
+      "timestamp": "2026-11-18T20:28:34.155Z"
+    }
+  ],
+  "smartFaqs": [
+    {
+      "faqId": "faq_exam_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "When do Odd Semester End-Term Examinations begin at Amity University Rajasthan?",
+      "answerText": "Odd Semester End-Term Theory Examinations for B.Tech CSE begin on December 4, 2026, following Practical & Lab Viva-Voce assessments (including BCS 522 Software Engineering Lab) from November 23 to November 30, 2026.",
+      "category": "Examinations",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_exam_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What is the minimum attendance required to appear in End-Semester Exams?",
+      "answerText": "Students must maintain a minimum of 75% attendance in each course (Theory and Lab separately) to be eligible for End-Semester Examinations. Medical condonation up to 5% requires Chief Proctor and Dean approval.",
+      "category": "Examinations",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_exam_03",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "How can I download my Admit Card for semester examinations?",
+      "answerText": "Admit Cards are released on the Amizone Student Portal 7 days prior to the first exam after clearance of semester fees and no-dues verification.",
+      "category": "Examinations",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_fee_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What is the annual tuition fee for B.Tech Computer Science & Engineering (CSE)?",
+      "answerText": "The non-sponsored academic tuition fee for B.Tech CSE at Amity University Rajasthan (Jaipur) is INR 1,86,000 per semester (INR 3,72,000 per academic year), payable via Amizone online portal or Demand Draft.",
+      "category": "Fees & Finance",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_fee_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What is the deadline and late fee policy for semester fee payment?",
+      "answerText": "Semester fees must be deposited within 15 days of semester commencement. A late fee of INR 500 per week applies thereafter up to 4 weeks.",
+      "category": "Fees & Finance",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_hostel_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What are the hostel fees and room options at Amity University Rajasthan?",
+      "answerText": "On-campus AC Triple-Sharing Hostel fee is INR 1,10,000 per year and Non-AC Triple-Sharing is INR 75,000 per year (excluding mess charges of INR 48,000/year). Wi-Fi, 24x7 security, and infirmary are included.",
+      "category": "Hostel & Campus",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_hostel_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What are the campus transport bus routes from Jaipur city?",
+      "answerText": "University AC buses operate daily from Vaishali Nagar, Mansarovar, Raja Park, Malviya Nagar, and Vidhyadhar Nagar to the Kant Kalwar (NH-11C) campus. Annual transport fee is INR 34,000.",
+      "category": "Hostel & Campus",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_adm_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What is the eligibility criteria for admission to B.Tech CSE?",
+      "answerText": "Candidates require a minimum of 60% aggregate in Class XII with Physics, Mathematics, and Chemistry/Computer Science, along with a valid JEE Main / Amity JEE score and personal interview.",
+      "category": "Admissions",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_adm_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "How do I apply for admissions at Amity University Rajasthan?",
+      "answerText": "Applications are submitted online at amity.edu/jaipur with an application fee of INR 1,500, followed by online document upload and Selection Process interview slot booking.",
+      "category": "Admissions",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_schol_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What merit scholarships are offered to B.Tech students?",
+      "answerText": "Amity offers 100% tuition scholarship for 93%+ aggregate in Class XII (CBSE/ISC), 50% scholarship for 88%-92.99%, and 25% scholarship for 80%-87.99% or JEE Main 90+ percentile.",
+      "category": "Scholarships",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_schol_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "How is merit scholarship renewed in subsequent years?",
+      "answerText": "Continuation of 100% scholarship requires ranking in the top 5% of the merit list (minimum 8.5 CGPA), and 50% scholarship requires top 10% (minimum 8.0 CGPA) without any backlogs.",
+      "category": "Scholarships",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_tt_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What are the regular class timings and Software Engineering Lab (BCS 522) schedule?",
+      "answerText": "Regular academic classes run Monday to Friday from 9:15 AM to 5:05 PM (each lecture 55 minutes). B.Tech CSE 5th Semester Software Engineering Lab (BCS 522) is held in ASET Block-B Lab-204 on Tuesdays and Thursdays.",
+      "category": "Timetable & Labs",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_tt_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "Where can I view my updated section-wise weekly timetable?",
+      "answerText": "Section-wise weekly timetables, faculty room allocations, and elective slots are published under the \"My Timetable\" tab on Amizone and on the ASET Department Notice Board.",
+      "category": "Timetable & Labs",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_lib_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What are the Central Library operating hours and digital journal access rules?",
+      "answerText": "The AUR Central Library is open from 8:30 AM to 9:00 PM on weekdays and 9:00 AM to 5:00 PM on Saturdays. IEEE Xplore, ACM Digital Library, and SpringerLink are accessible on campus Wi-Fi and via remote VPN.",
+      "category": "Library & IT",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_lib_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "How do students reset their Amizone or campus Wi-Fi password?",
+      "answerText": "Use the \"Forgot Password\" OTP link on amizone.net using your registered mobile number, or visit the IT Helpdesk on the Ground Floor of Block-A with your university ID card.",
+      "category": "Library & IT",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_place_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "When do campus placement drives start for B.Tech CSE students?",
+      "answerText": "Pre-placement training by Amity Technical Placement Centre (ATPC) starts in Semester 6, and core campus recruitment drives commence from July of Semester 7.",
+      "category": "Placements",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_place_02",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "What is the minimum CGPA required to sit for ATPC placement drives?",
+      "answerText": "Students with a cumulative CGPA of 6.5 and above with zero active backlogs are eligible for Tier-1 and core IT placement drives coordinated by ATPC.",
+      "category": "Placements",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_doc_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "How do I apply for a Bonafide Certificate or Official Transcript?",
+      "answerText": "Submit an online request under \"Student Services -> Certificates\" on Amizone. Bonafide certificates are issued within 2 working days and official transcripts within 5 working days.",
+      "category": "Student Services",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_anti_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "Who do I contact for anti-ragging or campus grievance redressal?",
+      "answerText": "Amity University Rajasthan enforces a zero-tolerance anti-ragging policy. Students can reach the 24x7 Anti-Ragging Helpline at 1800-180-5522 or email proctor@jpr.amity.edu.",
+      "category": "Campus Policies",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "faqId": "faq_event_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "question": "When is Odyssey, the annual techno-cultural fest of Amity University Rajasthan?",
+      "answerText": "Odyssey, the flagship annual techno-cultural fest of AUR, is scheduled for February 18-20, 2027, featuring hackathons, robotics challenges, and cultural nights.",
+      "category": "Events & Clubs",
+      "lastUpdated": "2026-11-18T20:58:33.882Z"
+    }
+  ],
+  "adminStaff": [
+    {
+      "staffId": "staff_aur_01",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "indexName": "askuni-aur-index",
+      "role": "admin_staff",
+      "username": "admin_aur",
+      "name": "Dr. Kavita Sharma (ASET Coordinator)",
+      "passwordHash": "$2a$10$fCW7lObFAmy4t1g1AezhxuUkDUUhQJWX448n7nDpt1fZd.17wKch6"
+    }
+  ],
+  "systemAdmins": [
+    {
+      "adminId": "sysadmin_aur_01",
+      "staffId": "staff_aur_01",
+      "apiEndpoint": "/api/sysadmin",
+      "role": "system_admin",
+      "username": "sysadmin_aur",
+      "name": "Rajesh Rathore (IT Infrastructure Lead)",
+      "passwordHash": "$2a$10$Uo/yMexwnZS35CQu.ZoePubXh0QGEKkGYOtV6hq.wMmWgSHyxtkFy"
+    }
+  ],
+  "serviceConfigs": [
+    {
+      "configId": "JWT_AUTH_SERVICE",
+      "serviceName": "JWT_AUTH_SERVICE",
+      "supportedLanguages": [
+        "en",
+        "hi",
+        "mr",
+        "ta",
+        "bn",
+        "pa"
+      ],
+      "rateLimitMax": 120,
+      "rateLimitWindowMs": 60000,
+      "apiEndpoint": "/api/auth",
+      "indexName": "",
+      "dbUri": "",
+      "maskedSecretHint": "***MASKED***",
+      "updatedAt": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "configId": "MONGODB_REPOSITORY",
+      "serviceName": "MONGODB_REPOSITORY",
+      "supportedLanguages": [
+        "en",
+        "hi",
+        "mr",
+        "ta",
+        "bn",
+        "pa"
+      ],
+      "rateLimitMax": 120,
+      "rateLimitWindowMs": 60000,
+      "apiEndpoint": "internal://mongodb-repository",
+      "indexName": "",
+      "dbUri": "mock://local-json-store/askuni_aur",
+      "maskedSecretHint": "***MASKED***",
+      "updatedAt": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "configId": "PINECONE_VECTOR_DB",
+      "serviceName": "PINECONE_VECTOR_DB",
+      "supportedLanguages": [
+        "en",
+        "hi",
+        "mr",
+        "ta",
+        "bn",
+        "pa"
+      ],
+      "rateLimitMax": 120,
+      "rateLimitWindowMs": 60000,
+      "apiEndpoint": "https://api.pinecone.io",
+      "indexName": "askuni-aur-index",
+      "dbUri": "",
+      "maskedSecretHint": "***MASKED***",
+      "updatedAt": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "configId": "PINECONE_VECTOR_ADAPTER",
+      "serviceName": "PINECONE_VECTOR_ADAPTER",
+      "supportedLanguages": [
+        "en",
+        "hi",
+        "mr",
+        "ta",
+        "bn",
+        "pa"
+      ],
+      "rateLimitMax": 120,
+      "rateLimitWindowMs": 60000,
+      "apiEndpoint": "internal://pinecone-vector-adapter",
+      "indexName": "askuni-aur-index",
+      "dbUri": "",
+      "maskedSecretHint": "***MASKED***",
+      "updatedAt": "2026-11-18T20:58:33.882Z"
+    },
+    {
+      "configId": "AI_TRANSLATION_SERVICE",
+      "serviceName": "AI_TRANSLATION_SERVICE",
+      "supportedLanguages": [
+        "en",
+        "hi",
+        "mr",
+        "ta",
+        "bn",
+        "pa"
+      ],
+      "rateLimitMax": 120,
+      "rateLimitWindowMs": 60000,
+      "apiEndpoint": "https://translation.googleapis.com/language/translate/v2",
+      "indexName": "",
+      "dbUri": "",
+      "maskedSecretHint": "***MASKED***",
+      "updatedAt": "2026-11-18T20:58:33.882Z"
+    }
+  ]
+}

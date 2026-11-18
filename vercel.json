@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{backend/data/**,frontend/dist/askuni-widget.iife.js}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/widget/askuni-widget.js", "destination": "/api/index.js" },
+    { "source": "/((?!api|widget|assets|embed-demo\\.html).*)", "destination": "/index.html" }
+  ]
+}

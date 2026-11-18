@@ -1,0 +1,7 @@
+node_modules/
+frontend/dist/
+reports/*.json
+.vercel/
+.env
+backend/.env
+*.log
