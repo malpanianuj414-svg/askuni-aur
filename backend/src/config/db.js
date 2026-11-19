@@ -27,7 +27,7 @@ const EMPTY_STORE = {
 class DatabaseManager {
   constructor() {
     this.connected = false;
-    this.mode = config.mockMode ? 'mock-json-mongoose' : 'mongodb';
+    this.mode = config.mockMode ? 'mock-json-mongoose' : 'mongodb-atlas';
     this.store = JSON.parse(JSON.stringify(EMPTY_STORE));
     this.simulateFailure = false;
   }
@@ -67,20 +67,31 @@ class DatabaseManager {
       return { connected: true, mode: this.mode };
     }
 
-    await mongoose.connect(config.mongodbUri, { serverSelectionTimeoutMS: 5000 });
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(config.mongodbUri, {
+        dbName: config.mongodbDbName,
+        serverSelectionTimeoutMS: 8000
+      });
+    }
     this.connected = true;
-    this.mode = 'mongodb';
-    return { connected: true, mode: this.mode };
+    this.mode = 'mongodb-atlas';
+    return { connected: true, mode: this.mode, dbName: config.mongodbDbName };
   }
 
   getStatus() {
     if (this.simulateFailure) {
       return { connected: false, mode: this.mode, error: 'Simulated MongoDB connection outage' };
     }
+    const isLiveConnected = config.mockMode
+      ? this.connected
+      : (this.connected && mongoose.connection.readyState === 1);
     return {
-      connected: this.connected,
+      connected: isLiveConnected,
       mode: this.mode,
-      uri: config.mockMode ? 'mock://local-json-store/askuni_aur' : config.mongodbUri.replace(/\/\/.*@/, '//***:***@')
+      dbName: config.mongodbDbName,
+      uri: config.mockMode
+        ? 'mock://local-json-store/askuni_aur'
+        : config.mongodbUri.replace(/\/\/.*@/, '//***:***@')
     };
   }
 }

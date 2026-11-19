@@ -10,18 +10,33 @@ class AppError extends Error {
   }
 }
 
+const COLLECTION_MODEL_MAP = {
+  students: { model: Models.Student, pk: 'userId' },
+  widgets: { model: Models.ChatbotWidget, pk: 'widgetId' },
+  userQueries: { model: Models.UserQuery, pk: 'queryId' },
+  processors: { model: Models.BackendQueryProcessor, pk: 'processorId' },
+  responses: { model: Models.ChatbotResponse, pk: 'responseId' },
+  sessionHistory: { model: Models.ChatSessionHistory, pk: 'historyId' },
+  sessionLogs: { model: Models.SessionLog, pk: 'logId' },
+  smartFaqs: { model: Models.SmartFAQ, pk: 'faqId' },
+  adminStaff: { model: Models.AdminStaff, pk: 'staffId' },
+  systemAdmins: { model: Models.SystemAdministrator, pk: 'adminId' },
+  serviceConfigs: { model: Models.ServiceConfig, pk: 'configId' }
+};
+
 class MongoDBRepository {
   constructor() {
-    this.dbUri = config.mockMode ? 'mock://local-json-store/askuni_aur' : config.mongodbUri;
+    this.dbUri = config.mockMode
+      ? 'mock://local-json-store/askuni_aur'
+      : `${config.mongodbUri.replace(/\/\/.*@/, '//***:***@')}/${config.mongodbDbName}`;
   }
 
-  assertAvailable() {
+  async assertAvailable() {
     if (dbManager.simulateFailure) {
       throw new AppError('MongoDB repository is currently unreachable.', 503, 'MONGODB_UNAVAILABLE');
     }
     if (!dbManager.connected) {
-      dbManager.loadFromDisk();
-      dbManager.connected = true;
+      await dbManager.connect();
     }
   }
 
@@ -33,7 +48,10 @@ class MongoDBRepository {
       const msg = firstKey ? err.errors[firstKey].message : err.message;
       throw new AppError(msg, 400, 'SCHEMA_VALIDATION_ERROR');
     }
-    return instance.toObject();
+    const clean = instance.toObject();
+    delete clean._id;
+    delete clean.__v;
+    return clean;
   }
 
   validateIdLength(id, fieldName = 'id') {
@@ -46,14 +64,43 @@ class MongoDBRepository {
     }
   }
 
-  // Generic insert with PK uniqueness, <=25 char check, and FK integrity
   async insertRecord(collectionKey, pkField, ModelClass, record, foreignChecks = []) {
-    this.assertAvailable();
+    await this.assertAvailable();
     this.validateIdLength(record[pkField], pkField);
     const cleanDoc = this.validateMongooseDoc(ModelClass, record);
 
-    const list = dbManager.store[collectionKey];
-    if (list.some((item) => item[pkField] === cleanDoc[pkField])) {
+    if (config.mockMode) {
+      const list = dbManager.store[collectionKey];
+      if (list.some((item) => item[pkField] === cleanDoc[pkField])) {
+        throw new AppError(
+          `Duplicate primary key '${cleanDoc[pkField]}' for ${pkField} in ${collectionKey}.`,
+          409,
+          'DUPLICATE_PRIMARY_KEY'
+        );
+      }
+
+      for (const fk of foreignChecks) {
+        const fkVal = cleanDoc[fk.field];
+        this.validateIdLength(fkVal, fk.field);
+        const targetList = dbManager.store[fk.targetCollection] || [];
+        const exists = targetList.some((row) => row[fk.targetField] === fkVal);
+        if (!exists) {
+          throw new AppError(
+            `Foreign key constraint failed: ${fk.field}='${fkVal}' does not exist in ${fk.targetCollection}.${fk.targetField}.`,
+            400,
+            'FOREIGN_KEY_VIOLATION'
+          );
+        }
+      }
+
+      list.push(cleanDoc);
+      dbManager.saveToDisk();
+      return cleanDoc;
+    }
+
+    // Live MongoDB Atlas path
+    const existing = await ModelClass.findOne({ [pkField]: cleanDoc[pkField] }).lean();
+    if (existing) {
       throw new AppError(
         `Duplicate primary key '${cleanDoc[pkField]}' for ${pkField} in ${collectionKey}.`,
         409,
@@ -64,8 +111,10 @@ class MongoDBRepository {
     for (const fk of foreignChecks) {
       const fkVal = cleanDoc[fk.field];
       this.validateIdLength(fkVal, fk.field);
-      const targetList = dbManager.store[fk.targetCollection] || [];
-      const exists = targetList.some((row) => row[fk.targetField] === fkVal);
+      const targetMeta = COLLECTION_MODEL_MAP[fk.targetCollection];
+      const exists = targetMeta
+        ? await targetMeta.model.findOne({ [fk.targetField]: fkVal }).lean()
+        : null;
       if (!exists) {
         throw new AppError(
           `Foreign key constraint failed: ${fk.field}='${fkVal}' does not exist in ${fk.targetCollection}.${fk.targetField}.`,
@@ -75,31 +124,53 @@ class MongoDBRepository {
       }
     }
 
-    list.push(cleanDoc);
-    dbManager.saveToDisk();
-    return cleanDoc;
+    const created = await ModelClass.create(cleanDoc);
+    const saved = created.toObject();
+    delete saved._id;
+    delete saved.__v;
+    return saved;
   }
 
-  // Student & Widget operations
   async ensureStudentAndWidget(userId, preferredLanguage = 'en', isAuthenticated = false, name = 'Visitor') {
-    this.assertAvailable();
+    await this.assertAvailable();
     this.validateIdLength(userId, 'userId');
-    let student = dbManager.store.students.find((s) => s.userId === userId);
-    if (!student) {
-      student = await this.insertRecord('students', 'userId', Models.Student, {
-        userId,
-        preferredLanguage,
-        isAuthenticated,
-        name,
-        role: isAuthenticated ? 'student' : 'anonymous'
-      });
-    } else if (preferredLanguage && student.preferredLanguage !== preferredLanguage) {
-      student.preferredLanguage = preferredLanguage;
-      dbManager.saveToDisk();
+
+    let student;
+    if (config.mockMode) {
+      student = dbManager.store.students.find((s) => s.userId === userId);
+      if (!student) {
+        student = await this.insertRecord('students', 'userId', Models.Student, {
+          userId,
+          preferredLanguage,
+          isAuthenticated,
+          name,
+          role: isAuthenticated ? 'student' : 'anonymous'
+        });
+      } else if (preferredLanguage && student.preferredLanguage !== preferredLanguage) {
+        student.preferredLanguage = preferredLanguage;
+        dbManager.saveToDisk();
+      }
+    } else {
+      student = await Models.Student.findOne({ userId }).lean();
+      if (!student) {
+        student = await this.insertRecord('students', 'userId', Models.Student, {
+          userId,
+          preferredLanguage,
+          isAuthenticated,
+          name,
+          role: isAuthenticated ? 'student' : 'anonymous'
+        });
+      } else if (preferredLanguage && student.preferredLanguage !== preferredLanguage) {
+        await Models.Student.updateOne({ userId }, { $set: { preferredLanguage } });
+        student.preferredLanguage = preferredLanguage;
+      }
     }
 
     const widgetId = `w_${userId}`.slice(0, 25);
-    let widget = dbManager.store.widgets.find((w) => w.widgetId === widgetId);
+    let widget = config.mockMode
+      ? dbManager.store.widgets.find((w) => w.widgetId === widgetId)
+      : await Models.ChatbotWidget.findOne({ widgetId }).lean();
+
     if (!widget) {
       widget = await this.insertRecord(
         'widgets',
@@ -113,26 +184,48 @@ class MongoDBRepository {
   }
 
   async findStudentByUsernameOrId(identifier) {
-    this.assertAvailable();
-    return dbManager.store.students.find(
-      (s) => s.userId === identifier || s.email.toLowerCase() === String(identifier).toLowerCase() || s.enrollmentNo.toLowerCase() === String(identifier).toLowerCase()
-    ) || null;
+    await this.assertAvailable();
+    const clean = String(identifier || '').trim();
+    if (config.mockMode) {
+      return dbManager.store.students.find(
+        (s) =>
+          s.userId === clean ||
+          s.email.toLowerCase() === clean.toLowerCase() ||
+          s.enrollmentNo.toLowerCase() === clean.toLowerCase()
+      ) || null;
+    }
+    const regex = new RegExp(`^${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    return Models.Student.findOne({
+      $or: [{ userId: clean }, { email: regex }, { enrollmentNo: regex }]
+    }).lean();
   }
 
   async findAdminStaffByUsername(username) {
-    this.assertAvailable();
-    return dbManager.store.adminStaff.find((a) => a.username.toLowerCase() === String(username).toLowerCase()) || null;
+    await this.assertAvailable();
+    const clean = String(username || '').trim();
+    if (config.mockMode) {
+      return dbManager.store.adminStaff.find((a) => a.username.toLowerCase() === clean.toLowerCase()) || null;
+    }
+    const regex = new RegExp(`^${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    return Models.AdminStaff.findOne({ username: regex }).lean();
   }
 
   async findSystemAdminByUsername(username) {
-    this.assertAvailable();
-    return dbManager.store.systemAdmins.find((a) => a.username.toLowerCase() === String(username).toLowerCase()) || null;
+    await this.assertAvailable();
+    const clean = String(username || '').trim();
+    if (config.mockMode) {
+      return dbManager.store.systemAdmins.find((a) => a.username.toLowerCase() === clean.toLowerCase()) || null;
+    }
+    const regex = new RegExp(`^${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    return Models.SystemAdministrator.findOne({ username: regex }).lean();
   }
 
-  // Smart FAQs
   async fetchSmartFAQs(queryText = '', category = '') {
-    this.assertAvailable();
-    let faqs = [...dbManager.store.smartFaqs];
+    await this.assertAvailable();
+    let faqs = config.mockMode
+      ? [...dbManager.store.smartFaqs]
+      : await Models.SmartFAQ.find({}, { _id: 0, __v: 0 }).lean();
+
     if (category && category !== 'all') {
       faqs = faqs.filter((f) => f.category.toLowerCase() === category.toLowerCase());
     }
@@ -163,7 +256,7 @@ class MongoDBRepository {
   }
 
   async createFAQEntry({ faqId, question, answerText, category }) {
-    this.assertAvailable();
+    await this.assertAvailable();
     const id = faqId || `faq_${Date.now().toString(36)}`.slice(0, 25);
     return this.insertRecord('smartFaqs', 'faqId', Models.SmartFAQ, {
       faqId: id,
@@ -176,13 +269,32 @@ class MongoDBRepository {
   }
 
   async updateFAQEntry(faqId, updates) {
-    this.assertAvailable();
+    await this.assertAvailable();
     this.validateIdLength(faqId, 'faqId');
-    const idx = dbManager.store.smartFaqs.findIndex((f) => f.faqId === faqId);
-    if (idx === -1) {
+
+    if (config.mockMode) {
+      const idx = dbManager.store.smartFaqs.findIndex((f) => f.faqId === faqId);
+      if (idx === -1) {
+        throw new AppError(`Smart FAQ '${faqId}' not found.`, 404, 'FAQ_NOT_FOUND');
+      }
+      const existing = dbManager.store.smartFaqs[idx];
+      const merged = {
+        ...existing,
+        question: updates.question !== undefined ? updates.question : existing.question,
+        answerText: updates.answerText !== undefined ? updates.answerText : existing.answerText,
+        category: updates.category !== undefined ? updates.category : existing.category,
+        lastUpdated: new Date().toISOString()
+      };
+      const validated = this.validateMongooseDoc(Models.SmartFAQ, merged);
+      dbManager.store.smartFaqs[idx] = validated;
+      dbManager.saveToDisk();
+      return validated;
+    }
+
+    const existing = await Models.SmartFAQ.findOne({ faqId }, { _id: 0, __v: 0 }).lean();
+    if (!existing) {
       throw new AppError(`Smart FAQ '${faqId}' not found.`, 404, 'FAQ_NOT_FOUND');
     }
-    const existing = dbManager.store.smartFaqs[idx];
     const merged = {
       ...existing,
       question: updates.question !== undefined ? updates.question : existing.question,
@@ -191,24 +303,31 @@ class MongoDBRepository {
       lastUpdated: new Date().toISOString()
     };
     const validated = this.validateMongooseDoc(Models.SmartFAQ, merged);
-    dbManager.store.smartFaqs[idx] = validated;
-    dbManager.saveToDisk();
+    await Models.SmartFAQ.updateOne({ faqId }, { $set: validated });
     return validated;
   }
 
   async deleteFAQEntry(faqId) {
-    this.assertAvailable();
+    await this.assertAvailable();
     this.validateIdLength(faqId, 'faqId');
-    const idx = dbManager.store.smartFaqs.findIndex((f) => f.faqId === faqId);
-    if (idx === -1) {
+
+    if (config.mockMode) {
+      const idx = dbManager.store.smartFaqs.findIndex((f) => f.faqId === faqId);
+      if (idx === -1) {
+        throw new AppError(`Smart FAQ '${faqId}' not found.`, 404, 'FAQ_NOT_FOUND');
+      }
+      const [removed] = dbManager.store.smartFaqs.splice(idx, 1);
+      dbManager.saveToDisk();
+      return removed;
+    }
+
+    const existing = await Models.SmartFAQ.findOneAndDelete({ faqId }, { projection: { _id: 0, __v: 0 } }).lean();
+    if (!existing) {
       throw new AppError(`Smart FAQ '${faqId}' not found.`, 404, 'FAQ_NOT_FOUND');
     }
-    const [removed] = dbManager.store.smartFaqs.splice(idx, 1);
-    dbManager.saveToDisk();
-    return removed;
+    return existing;
   }
 
-  // RAG Execution Chain & Chat Logs
   async recordQueryExecutionChain({
     userQuery,
     processor,
@@ -217,7 +336,7 @@ class MongoDBRepository {
     sessionId,
     userId
   }) {
-    this.assertAvailable();
+    await this.assertAvailable();
 
     const savedQuery = await this.insertRecord(
       'userQueries',
@@ -292,13 +411,15 @@ class MongoDBRepository {
   }
 
   async saveChatLog(logData) {
-    this.assertAvailable();
+    await this.assertAvailable();
     return this.insertRecord('sessionLogs', 'logId', Models.SessionLog, logData);
   }
 
   async queryRecentSessions({ date = '', language = '', keyword = '' } = {}) {
-    this.assertAvailable();
-    let logs = [...dbManager.store.sessionLogs];
+    await this.assertAvailable();
+    let logs = config.mockMode
+      ? [...dbManager.store.sessionLogs]
+      : await Models.SessionLog.find({}, { _id: 0, __v: 0 }).lean();
 
     if (date) {
       logs = logs.filter((l) => l.timestamp.startsWith(date));
@@ -341,22 +462,29 @@ class MongoDBRepository {
   }
 
   async getSessionDetail(sessionId) {
-    this.assertAvailable();
-    const logs = dbManager.store.sessionLogs
-      .filter((l) => l.sessionId === sessionId)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    await this.assertAvailable();
+    const rawLogs = config.mockMode
+      ? dbManager.store.sessionLogs.filter((l) => l.sessionId === sessionId)
+      : await Models.SessionLog.find({ sessionId }, { _id: 0, __v: 0 }).lean();
 
-    const history = dbManager.store.sessionHistory
-      .filter((h) => h.sessionId === sessionId)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    const rawHistory = config.mockMode
+      ? dbManager.store.sessionHistory.filter((h) => h.sessionId === sessionId)
+      : await Models.ChatSessionHistory.find({ sessionId }, { _id: 0, __v: 0 }).lean();
+
+    const logs = rawLogs.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    const history = rawHistory.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
     return { sessionId, logs, history };
   }
 
   async getTrendingQuestions() {
-    this.assertAvailable();
+    await this.assertAvailable();
+    const allLogs = config.mockMode
+      ? dbManager.store.sessionLogs
+      : await Models.SessionLog.find({}, { _id: 0, __v: 0 }).lean();
+
     const counts = new Map();
-    for (const log of dbManager.store.sessionLogs) {
+    for (const log of allLogs) {
       const normalized = log.queryText.trim();
       if (!normalized) continue;
       const key = normalized.toLowerCase();
@@ -379,24 +507,42 @@ class MongoDBRepository {
   }
 
   async getServiceConfigs() {
-    this.assertAvailable();
-    return dbManager.store.serviceConfigs;
+    await this.assertAvailable();
+    if (config.mockMode) {
+      return dbManager.store.serviceConfigs;
+    }
+    return Models.ServiceConfig.find({}, { _id: 0, __v: 0 }).lean();
   }
 
   async updateServiceConfig(configId, patch) {
-    this.assertAvailable();
-    const idx = dbManager.store.serviceConfigs.findIndex((c) => c.configId === configId);
-    if (idx === -1) {
+    await this.assertAvailable();
+    if (config.mockMode) {
+      const idx = dbManager.store.serviceConfigs.findIndex((c) => c.configId === configId);
+      if (idx === -1) {
+        throw new AppError(`ServiceConfig '${configId}' not found.`, 404, 'CONFIG_NOT_FOUND');
+      }
+      const updated = {
+        ...dbManager.store.serviceConfigs[idx],
+        ...patch,
+        updatedAt: new Date().toISOString()
+      };
+      const validated = this.validateMongooseDoc(Models.ServiceConfig, updated);
+      dbManager.store.serviceConfigs[idx] = validated;
+      dbManager.saveToDisk();
+      return validated;
+    }
+
+    const existing = await Models.ServiceConfig.findOne({ configId }, { _id: 0, __v: 0 }).lean();
+    if (!existing) {
       throw new AppError(`ServiceConfig '${configId}' not found.`, 404, 'CONFIG_NOT_FOUND');
     }
     const updated = {
-      ...dbManager.store.serviceConfigs[idx],
+      ...existing,
       ...patch,
       updatedAt: new Date().toISOString()
     };
     const validated = this.validateMongooseDoc(Models.ServiceConfig, updated);
-    dbManager.store.serviceConfigs[idx] = validated;
-    dbManager.saveToDisk();
+    await Models.ServiceConfig.updateOne({ configId }, { $set: validated });
     return validated;
   }
 }

@@ -4,11 +4,14 @@ const path = require('path');
 const config = require('../config/env');
 
 const SEED_KB_FILE = path.resolve(__dirname, '../../data/knowledge-base.json');
-const KB_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'askuni-knowledge-base.json') : SEED_KB_FILE;
+const KB_FILE = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'askuni-knowledge-base.json')
+  : SEED_KB_FILE;
 
 class PineconeVectorAdapter {
   constructor() {
     this.indexName = config.pineconeIndex;
+    this.resolvedHost = config.pineconeHost || '';
     this.simulateFailure = false;
     this.documents = [];
     this.loadDocuments();
@@ -33,11 +36,74 @@ class PineconeVectorAdapter {
     fs.writeFileSync(KB_FILE, JSON.stringify(this.documents, null, 2), 'utf8');
   }
 
-  // Deterministic lightweight bag-of-words embedding vector (16 dims) for mock mode
+  async resolvePineconeHost() {
+    if (this.resolvedHost) {
+      return this.resolvedHost.startsWith('http') ? this.resolvedHost : `https://${this.resolvedHost}`;
+    }
+    if (!config.pineconeApiKey || !this.indexName) {
+      return '';
+    }
+    const resp = await fetch(`https://api.pinecone.io/indexes/${encodeURIComponent(this.indexName)}`, {
+      method: 'GET',
+      headers: { 'Api-Key': config.pineconeApiKey }
+    });
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      throw new Error(`Pinecone describe_index HTTP ${resp.status}: ${errBody}`);
+    }
+    const meta = await resp.json();
+    if (!meta.host) {
+      throw new Error('Pinecone index host not returned');
+    }
+    this.resolvedHost = meta.host.startsWith('http') ? meta.host : `https://${meta.host}`;
+    return this.resolvedHost;
+  }
+
+  async getLiveVectorCount() {
+    if (config.mockMode || !config.pineconeApiKey) {
+      return this.documents.length;
+    }
+    const host = await this.resolvePineconeHost();
+    const resp = await fetch(`${host}/describe_index_stats`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Api-Key': config.pineconeApiKey
+      },
+      body: JSON.stringify({})
+    });
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      throw new Error(`Pinecone describe_index_stats HTTP ${resp.status}: ${errBody}`);
+    }
+    const stats = await resp.json();
+    return Number(stats.totalVectorCount || stats.totalRecordCount || 0);
+  }
+
   async retrieveEmbeddings(text) {
     if (this.simulateFailure) {
       throw new Error('Pinecone embedding service unavailable');
     }
+
+    if (!config.mockMode && config.geminiApiKey) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${encodeURIComponent(config.geminiApiKey)}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'models/gemini-embedding-001',
+          content: { parts: [{ text: String(text || '') }] },
+          outputDimensionality: 768
+        })
+      });
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Gemini Embeddings HTTP ${resp.status}: ${errBody}`);
+      }
+      const data = await resp.json();
+      return data.embedding.values;
+    }
+
     if (!config.mockMode && config.openaiApiKey) {
       const resp = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
@@ -69,9 +135,10 @@ class PineconeVectorAdapter {
       throw new Error('Pinecone Vector DB connection timed out');
     }
 
-    if (!config.mockMode && config.pineconeApiKey && config.pineconeHost) {
+    if (!config.mockMode && config.pineconeApiKey) {
+      const host = await this.resolvePineconeHost();
       const vector = await this.retrieveEmbeddings(queryText);
-      const resp = await fetch(`${config.pineconeHost}/query`, {
+      const resp = await fetch(`${host}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,16 +148,17 @@ class PineconeVectorAdapter {
       });
       if (!resp.ok) throw new Error(`Pinecone query HTTP ${resp.status}`);
       const json = await resp.json();
-      return (json.matches || []).map((m) => ({
-        docId: m.id,
-        title: m.metadata?.title || 'Institutional Document',
-        category: m.metadata?.category || 'Circular',
-        content: m.metadata?.content || '',
-        score: m.score || 0
-      }));
+      return (json.matches || [])
+        .filter((m) => (m.score || 0) >= 0.35)
+        .map((m) => ({
+          docId: m.id,
+          title: m.metadata?.title || 'Institutional Document',
+          category: m.metadata?.category || 'Circular',
+          content: m.metadata?.content || m.metadata?.text || '',
+          score: m.score || 0
+        }));
     }
 
-    // Mock TF-IDF / keyword overlap retrieval over local knowledge-base.json
     if (this.documents.length === 0) {
       this.loadDocuments();
     }
@@ -121,7 +189,7 @@ class PineconeVectorAdapter {
       .slice(0, topK);
   }
 
-  async upsertDocument({ title, category, content }) {
+  async upsertDocument({ docId: customDocId, title, category, content }) {
     if (this.simulateFailure) {
       throw new Error('Pinecone Vector DB unavailable for upsert');
     }
@@ -134,12 +202,28 @@ class PineconeVectorAdapter {
     if (chunks.length === 0) chunks.push('');
 
     const created = [];
+    const vectorsToUpsert = [];
+
     for (let idx = 0; idx < chunks.length; idx += 1) {
-      const docId = `kb_${Date.now().toString(36)}_${idx}`.slice(0, 25);
-      const embedding = await this.retrieveEmbeddings(chunks[idx]);
+      const docId = customDocId
+        ? (chunks.length > 1 ? `${customDocId}_${idx}`.slice(0, 25) : customDocId.slice(0, 25))
+        : `kb_${Date.now().toString(36)}_${idx}`.slice(0, 25);
+      const chunkTitle = chunks.length > 1 ? `${title} (Part ${idx + 1})` : title;
+      const embedding = await this.retrieveEmbeddings(`${chunkTitle}\n${chunks[idx]}`);
+
+      vectorsToUpsert.push({
+        id: docId,
+        values: embedding,
+        metadata: {
+          title: chunkTitle,
+          category: category || 'Circular',
+          content: chunks[idx]
+        }
+      });
+
       const record = {
         docId,
-        title: chunks.length > 1 ? `${title} (Part ${idx + 1})` : title,
+        title: chunkTitle,
         category: category || 'Circular',
         content: chunks[idx],
         embeddingPreview: embedding.slice(0, 4),
@@ -148,6 +232,24 @@ class PineconeVectorAdapter {
       this.documents.push(record);
       created.push(record);
     }
+
+    if (!config.mockMode && config.pineconeApiKey) {
+      const host = await this.resolvePineconeHost();
+      const resp = await fetch(`${host}/vectors/upsert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Api-Key': config.pineconeApiKey
+        },
+        body: JSON.stringify({ vectors: vectorsToUpsert })
+      });
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Pinecone upsert HTTP ${resp.status}: ${errBody}`);
+      }
+      return created;
+    }
+
     this.saveDocuments();
     return created;
   }

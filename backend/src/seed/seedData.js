@@ -1,5 +1,6 @@
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const config = require('../config/env');
 const { dbManager, EMPTY_STORE } = require('../config/db');
 const { MongoDBRepository } = require('../adapters/MongoDBRepository');
 const { PineconeVectorAdapter, KB_FILE } = require('../adapters/PineconeVectorAdapter');
@@ -161,16 +162,7 @@ const SEED_DOCUMENTS = [
   }
 ];
 
-async function runSeed({ forceReset = true } = {}) {
-  if (!dbManager.connected) {
-    await dbManager.connect();
-  }
-
-  if (forceReset) {
-    dbManager.store = JSON.parse(JSON.stringify(EMPTY_STORE));
-  }
-
-  const repo = new MongoDBRepository();
+async function seedMongoOnly(repo) {
   const dbUri = repo.dbUri;
   const now = new Date().toISOString();
 
@@ -178,17 +170,26 @@ async function runSeed({ forceReset = true } = {}) {
   const sysAdminHash = bcrypt.hashSync('SysAdmin@123', 10);
   const studentHash = bcrypt.hashSync('Student@123', 10);
 
-  await repo.insertRecord('adminStaff', 'staffId', Models.AdminStaff, {
+  const safeInsert = async (collectionKey, pkField, ModelClass, doc, fks = []) => {
+    try {
+      await repo.insertRecord(collectionKey, pkField, ModelClass, doc, fks);
+    } catch (err) {
+      if (err && err.code === 'DUPLICATE_PRIMARY_KEY') return;
+      throw err;
+    }
+  };
+
+  await safeInsert('adminStaff', 'staffId', Models.AdminStaff, {
     staffId: 'staff_aur_01',
     dbUri,
-    indexName: 'askuni-aur-index',
+    indexName: config.pineconeIndex,
     role: 'admin_staff',
     username: 'admin_aur',
     name: 'Dr. Kavita Sharma (ASET Coordinator)',
     passwordHash: adminHash
   });
 
-  await repo.insertRecord(
+  await safeInsert(
     'systemAdmins',
     'adminId',
     Models.SystemAdministrator,
@@ -204,7 +205,7 @@ async function runSeed({ forceReset = true } = {}) {
     [{ field: 'staffId', targetCollection: 'adminStaff', targetField: 'staffId' }]
   );
 
-  await repo.insertRecord('students', 'userId', Models.Student, {
+  await safeInsert('students', 'userId', Models.Student, {
     userId: 'stu_a50105224001',
     preferredLanguage: 'en',
     isAuthenticated: true,
@@ -217,7 +218,7 @@ async function runSeed({ forceReset = true } = {}) {
     passwordHash: studentHash
   });
 
-  await repo.insertRecord('students', 'userId', Models.Student, {
+  await safeInsert('students', 'userId', Models.Student, {
     userId: 'stu_a50105224002',
     preferredLanguage: 'hi',
     isAuthenticated: true,
@@ -234,7 +235,7 @@ async function runSeed({ forceReset = true } = {}) {
   await repo.ensureStudentAndWidget('stu_a50105224002', 'hi', true, 'Priya Meena');
 
   for (const faq of SEED_FAQS) {
-    await repo.insertRecord('smartFaqs', 'faqId', Models.SmartFAQ, {
+    await safeInsert('smartFaqs', 'faqId', Models.SmartFAQ, {
       faqId: faq.faqId,
       dbUri,
       question: faq.question,
@@ -266,7 +267,7 @@ async function runSeed({ forceReset = true } = {}) {
     {
       configId: 'PINECONE_VECTOR_DB',
       serviceName: 'PINECONE_VECTOR_DB',
-      indexName: 'askuni-aur-index',
+      indexName: config.pineconeIndex,
       apiEndpoint: 'https://api.pinecone.io',
       maskedSecretHint: '***MASKED***',
       updatedAt: now
@@ -274,7 +275,7 @@ async function runSeed({ forceReset = true } = {}) {
     {
       configId: 'PINECONE_VECTOR_ADAPTER',
       serviceName: 'PINECONE_VECTOR_ADAPTER',
-      indexName: 'askuni-aur-index',
+      indexName: config.pineconeIndex,
       apiEndpoint: 'internal://pinecone-vector-adapter',
       maskedSecretHint: '***MASKED***',
       updatedAt: now
@@ -283,14 +284,14 @@ async function runSeed({ forceReset = true } = {}) {
       configId: 'AI_TRANSLATION_SERVICE',
       serviceName: 'AI_TRANSLATION_SERVICE',
       supportedLanguages: ['en', 'hi', 'mr', 'ta', 'bn', 'pa'],
-      apiEndpoint: 'https://translation.googleapis.com/language/translate/v2',
+      apiEndpoint: 'https://generativelanguage.googleapis.com',
       maskedSecretHint: '***MASKED***',
       updatedAt: now
     }
   ];
 
   for (const cfg of serviceConfigs) {
-    await repo.insertRecord('serviceConfigs', 'configId', Models.ServiceConfig, cfg);
+    await safeInsert('serviceConfigs', 'configId', Models.ServiceConfig, cfg);
   }
 
   const sampleLogs = [
@@ -317,21 +318,54 @@ async function runSeed({ forceReset = true } = {}) {
   ];
 
   for (const lg of sampleLogs) {
-    await repo.saveChatLog(lg);
+    await safeInsert('sessionLogs', 'logId', Models.SessionLog, lg);
   }
 
-  const pinecone = new PineconeVectorAdapter();
-  pinecone.documents = SEED_DOCUMENTS.map((d) => ({
-    ...d,
-    updatedAt: now
-  }));
-  pinecone.saveDocuments();
-
   dbManager.saveToDisk();
+}
+
+async function seedPineconeOnly(pinecone) {
+  const now = new Date().toISOString();
+  if (config.mockMode) {
+    pinecone.documents = SEED_DOCUMENTS.map((d) => ({
+      ...d,
+      updatedAt: now
+    }));
+    pinecone.saveDocuments();
+    return;
+  }
+
+  if (config.pineconeApiKey) {
+    for (const d of SEED_DOCUMENTS) {
+      await pinecone.upsertDocument({
+        docId: d.docId,
+        title: d.title,
+        category: d.category,
+        content: d.content
+      });
+    }
+  }
+}
+
+async function runSeed({ forceReset = true } = {}) {
+  if (!dbManager.connected) {
+    await dbManager.connect();
+  }
+
+  if (forceReset && config.mockMode) {
+    dbManager.store = JSON.parse(JSON.stringify(EMPTY_STORE));
+  }
+
+  const repo = new MongoDBRepository();
+  const pinecone = new PineconeVectorAdapter();
+
+  await seedMongoOnly(repo);
+  await seedPineconeOnly(pinecone);
+
   return {
-    faqsCount: dbManager.store.smartFaqs.length,
-    docsCount: pinecone.documents.length,
-    studentsCount: dbManager.store.students.length
+    faqsCount: SEED_FAQS.length,
+    docsCount: SEED_DOCUMENTS.length,
+    studentsCount: 2
   };
 }
 
@@ -339,18 +373,43 @@ async function seedDatabaseIfEmpty() {
   if (!dbManager.connected) {
     await dbManager.connect();
   }
-  if (dbManager.store.smartFaqs.length === 0) {
-    return runSeed({ forceReset: true });
+
+  if (config.mockMode) {
+    if (dbManager.store.smartFaqs.length === 0) {
+      return runSeed({ forceReset: true });
+    }
+    return {
+      faqsCount: dbManager.store.smartFaqs.length,
+      docsCount: fs.existsSync(KB_FILE) ? JSON.parse(fs.readFileSync(KB_FILE, 'utf8')).length : 0,
+      studentsCount: dbManager.store.students.length
+    };
   }
+
+  const repo = new MongoDBRepository();
+  const pinecone = new PineconeVectorAdapter();
+
+  const existingFaqs = await Models.SmartFAQ.countDocuments();
+  const existingAdmins = await Models.AdminStaff.countDocuments();
+  if (existingFaqs === 0 || existingAdmins === 0) {
+    await seedMongoOnly(repo);
+  }
+
+  if (config.pineconeApiKey) {
+    const vectorCount = await pinecone.getLiveVectorCount();
+    if (vectorCount === 0) {
+      await seedPineconeOnly(pinecone);
+    }
+  }
+
   return {
-    faqsCount: dbManager.store.smartFaqs.length,
-    docsCount: fs.existsSync(KB_FILE) ? JSON.parse(fs.readFileSync(KB_FILE, 'utf8')).length : 0,
-    studentsCount: dbManager.store.students.length
+    faqsCount: await Models.SmartFAQ.countDocuments(),
+    docsCount: SEED_DOCUMENTS.length,
+    studentsCount: await Models.Student.countDocuments()
   };
 }
 
 if (require.main === module) {
-  runSeed({ forceReset: true })
+  runSeed({ forceReset: config.mockMode })
     .then((summary) => {
       console.log('[AskUni Seed] Completed successfully:', JSON.stringify(summary));
       process.exit(0);

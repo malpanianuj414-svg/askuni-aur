@@ -15,7 +15,10 @@ async function getInitializedApp() {
       await seedDatabaseIfEmpty();
       cachedApp = createApp();
       return cachedApp;
-    })();
+    })().catch((err) => {
+      initPromise = null;
+      throw err;
+    });
   }
   return initPromise;
 }
@@ -30,7 +33,8 @@ module.exports = async (req, res) => {
       success: false,
       error: {
         code: 'SERVERLESS_INIT_ERROR',
-        message: 'Failed to initialize AskUni backend service.'
+        message: 'Failed to initialize AskUni backend service.',
+        detail: err && err.message ? err.message : String(err)
       }
     });
   }

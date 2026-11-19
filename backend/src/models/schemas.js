@@ -19,14 +19,14 @@ const studentSchema = new mongoose.Schema({
   semester: { type: Number, default: 5 },
   role: { type: String, enum: ['anonymous', 'student'], default: 'anonymous' },
   passwordHash: { type: String, default: '' }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 2. CHATBOT_WIDGET(widgetId PK, userId FK, isVisible)
 const chatbotWidgetSchema = new mongoose.Schema({
   widgetId: { type: String, required: true, unique: true, validate: customIdValidator },
   userId: { type: String, required: true, validate: customIdValidator },
   isVisible: { type: Boolean, default: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 3. USER_QUERY(queryId PK, userId FK, widgetId FK, queryText, language, timestamp)
 const userQuerySchema = new mongoose.Schema({
@@ -36,7 +36,7 @@ const userQuerySchema = new mongoose.Schema({
   queryText: { type: String, required: true, trim: true, minLength: 1 },
   language: { type: String, default: 'en' },
   timestamp: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 4. BACKEND_QUERY_PROCESSOR(processorId PK, queryId FK, activeSessionId, dbUri, indexName, apiEndpoint)
 const backendQueryProcessorSchema = new mongoose.Schema({
@@ -46,7 +46,7 @@ const backendQueryProcessorSchema = new mongoose.Schema({
   dbUri: { type: String, required: true },
   indexName: { type: String, required: true },
   apiEndpoint: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 5. CHATBOT_RESPONSE(responseId PK, processorId FK, generatedText, translatedText, targetLanguage)
 const chatbotResponseSchema = new mongoose.Schema({
@@ -55,7 +55,7 @@ const chatbotResponseSchema = new mongoose.Schema({
   generatedText: { type: String, required: true },
   translatedText: { type: String, required: true },
   targetLanguage: { type: String, default: 'en' }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 6. CHAT_SESSION_HISTORY(historyId PK, widgetId FK, sessionId, messageText, timestamp, role user|assistant)
 const chatSessionHistorySchema = new mongoose.Schema({
@@ -65,7 +65,7 @@ const chatSessionHistorySchema = new mongoose.Schema({
   messageText: { type: String, required: true },
   timestamp: { type: String, required: true },
   role: { type: String, enum: ['user', 'assistant'], required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 7. SESSION_LOG(logId PK, dbUri, sessionId, queryText, responseText, timestamp)
 const sessionLogSchema = new mongoose.Schema({
@@ -77,7 +77,7 @@ const sessionLogSchema = new mongoose.Schema({
   responseText: { type: String, required: true },
   language: { type: String, default: 'en' },
   timestamp: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 8. SMART_FAQ(faqId PK, dbUri, question, answerText, category, lastUpdated)
 const smartFaqSchema = new mongoose.Schema({
@@ -87,7 +87,7 @@ const smartFaqSchema = new mongoose.Schema({
   answerText: { type: String, required: true, trim: true, minLength: 3 },
   category: { type: String, required: true, trim: true },
   lastUpdated: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 9. ADMIN_STAFF(staffId PK, dbUri, indexName, role)
 const adminStaffSchema = new mongoose.Schema({
@@ -98,7 +98,7 @@ const adminStaffSchema = new mongoose.Schema({
   username: { type: String, required: true },
   name: { type: String, default: 'Admin Staff' },
   passwordHash: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 10. SYSTEM_ADMINISTRATOR(adminId PK, staffId FK, apiEndpoint, role)
 const systemAdministratorSchema = new mongoose.Schema({
@@ -109,7 +109,7 @@ const systemAdministratorSchema = new mongoose.Schema({
   username: { type: String, required: true },
   name: { type: String, default: 'System Administrator' },
   passwordHash: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 // 11. SERVICE_CONFIG (JWT_AUTH_SERVICE, MONGODB_REPOSITORY, PINECONE_VECTOR_DB, PINECONE_VECTOR_ADAPTER, AI_TRANSLATION_SERVICE)
 const serviceConfigSchema = new mongoose.Schema({
@@ -123,7 +123,7 @@ const serviceConfigSchema = new mongoose.Schema({
   dbUri: { type: String, default: '' },
   maskedSecretHint: { type: String, default: '***MASKED***' },
   updatedAt: { type: String, required: true }
-}, { _id: false, versionKey: false });
+}, { versionKey: false });
 
 const Models = {
   Student: mongoose.models.Student || mongoose.model('Student', studentSchema),

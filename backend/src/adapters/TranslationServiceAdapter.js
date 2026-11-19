@@ -11,7 +11,6 @@ const LANGUAGE_LABELS = {
   pa: 'Punjabi (à¨ªà©°à¨œà¨¾à¨¬à©€)'
 };
 
-// Phrase & vocabulary dictionary for realistic offline/mock regional translation
 const PHRASE_DICTIONARY = {
   hi: {
     prefix: '[à¤¹à¤¿à¤¨à¥à¤¦à¥€ à¤…à¤¨à¥à¤µà¤¾à¤¦] ',
@@ -80,7 +79,6 @@ class TranslationServiceAdapter {
   detectLanguage(text) {
     const s = String(text || '');
     if (/[\u0900-\u097F]/.test(s)) {
-      // Distinguish Marathi markers vs Hindi Devanagari
       if (/(à¤†à¤¹à¥‡|à¤•à¤¾à¤¯|à¤•à¤¿à¤¤à¥€|à¤•à¤§à¥€|à¤®à¤¾à¤¹à¤¿à¤¤à¥€)/.test(s)) return 'mr';
       return 'hi';
     }
@@ -149,12 +147,48 @@ class TranslationServiceAdapter {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ q: text, target: lang, format: 'text' })
         });
-        if (!resp.ok) {
-          throw new Error(`Google Translate HTTP ${resp.status}`);
-        }
+        if (!resp.ok) throw new Error(`Google Translate HTTP ${resp.status}`);
         const data = await resp.json();
         return {
           translatedText: data.data.translations[0].translatedText,
+          effectiveLanguage: lang,
+          unsupportedLanguage: false,
+          translationFailed: false
+        };
+      } catch (err) {
+        return {
+          translatedText: text,
+          effectiveLanguage: 'en',
+          unsupportedLanguage: false,
+          translationFailed: true,
+          failureReason: err.message
+        };
+      }
+    }
+
+    if (!config.mockMode && config.geminiApiKey) {
+      try {
+        const langName = LANGUAGE_LABELS[lang] || lang;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.geminiModel)}:generateContent?key=${encodeURIComponent(config.geminiApiKey)}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [{
+                text: `Translate the following university helpdesk answer accurately into ${langName}. Preserve all numbers, dates, course codes (like BCS 522), and phone numbers. Return ONLY the translated text without commentary:\n\n${text}`
+              }]
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+          })
+        });
+        if (!resp.ok) throw new Error(`Gemini Translate HTTP ${resp.status}`);
+        const data = await resp.json();
+        const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (!translated) throw new Error('Empty translation from Gemini');
+        return {
+          translatedText: translated,
           effectiveLanguage: lang,
           unsupportedLanguage: false,
           translationFailed: false

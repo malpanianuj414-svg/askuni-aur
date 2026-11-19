@@ -12,7 +12,7 @@ class AIServiceAdapter {
 
     const hasContext = Array.isArray(mergedContext) && mergedContext.length > 0;
 
-    if (!config.mockMode && config.openaiApiKey) {
+    if (!config.mockMode && (config.geminiApiKey || config.openaiApiKey)) {
       const systemPrompt = [
         'You are AskUni, the official AI assistant for Amity University Rajasthan (Jaipur).',
         'Answer strictly using ONLY the provided institutional context.',
@@ -23,6 +23,31 @@ class AIServiceAdapter {
       const contextBlock = hasContext
         ? mergedContext.map((c, i) => `[${i + 1}] (${c.source} - ${c.title}): ${c.text}`).join('\n')
         : 'NO MATCHING CONTEXT FOUND.';
+
+      const userPrompt = `Context:\n${contextBlock}\n\nStudent Question: ${queryText}`;
+
+      if (config.geminiApiKey) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.geminiModel)}:generateContent?key=${encodeURIComponent(config.geminiApiKey)}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+          })
+        });
+        if (!resp.ok) {
+          throw new Error(`Gemini API returned HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return {
+          text: text.trim(),
+          grounded: hasContext,
+          sourceCount: mergedContext.length
+        };
+      }
 
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -35,7 +60,7 @@ class AIServiceAdapter {
           temperature: 0.1,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Context:\n${contextBlock}\n\nStudent Question: ${queryText}` }
+            { role: 'user', content: userPrompt }
           ]
         })
       });
